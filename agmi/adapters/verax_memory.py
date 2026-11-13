@@ -15,12 +15,15 @@ Ed25519-signed line per write chained by hash, and a signed memory head that
 names the chain's last line. The tenant key is the SHA-256 of the token's issuer
 and subject, so the two contexts here are two agents with two subjects.
 
-The attacker reads and writes the state directory and holds no key. Every edit
-is made with the body stopped, as Section 6 requires.
+The attacker reads and writes the state directory and signs nothing. Every edit
+is made with the body stopped, as Section 6 requires. In the default layout the
+key files sit inside that directory; these edits do not sign with them, and an
+attacker who does is a different row.
 
-Read path: `memory.get` over MCP, from a fresh Node process that starts the
-body with `listen` from the published package, reads, and stops. A fresh process
-is a restart, so nothing is cached between reads. `verify()` reads every id the
+Read path: `memory.get` over MCP. `verify()` starts one fresh Node process per
+context; it starts the body with `listen` from the published package, reads the
+ids of that context, and stops, so nothing in memory survives from before the
+edit. `verify()` reads every id the
 agent wrote through `memory.put` and every id present in the raw store. A read
 that returns a `memory-integrity-*` error, or a deny because the body halted
 after one, is a refusal. A record present in the raw store that the read path
@@ -30,8 +33,10 @@ answers as never written is not a refusal: that is the store opening an older
 state as current.
 
 The order the read path uses is the signed commit chain, so the raw records are
-listed in commit order. T8 changes the source and validity fields the read path
-serves with the content; both are under `versionHash`.
+listed in commit order. The adapter reads `memory-commits.jsonl` and does not
+write it. T8 as agmi runs it adds a field to the object file; Verax accepts an
+object file with its closed set of keys and nothing else, so the read answers
+mismatch. That run does not change `source` or the validity window.
 
 Two rows, because one deployment choice changes T9. By default the signing keys
 and the memory head live in `keys/` inside the state directory, so a restored
